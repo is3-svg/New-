@@ -24,8 +24,10 @@
       background: rgba(255, 255, 255, 0.75);
       box-shadow: 0 10px 30px rgba(230, 0, 92, 0.12);
       backdrop-filter: blur(6px);
-      position: relative;
+      position: relative;            /* key: make this the play area */
       width: min(520px, 92vw);
+      min-height: 240px;             /* ensures space to dodge */
+      overflow: hidden;              /* keep No inside card */
     }
 
     h1 {
@@ -47,6 +49,10 @@
       justify-content: center;
       align-items: center;
       flex-wrap: wrap;
+      position: relative;
+      z-index: 2;
+      margin-top: 6px;
+      height: 60px;                 /* keeps initial alignment stable */
     }
 
     button {
@@ -55,12 +61,8 @@
       border: none;
       border-radius: 12px;
       cursor: pointer;
-      transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+      transition: transform 120ms ease, box-shadow 120ms ease;
       user-select: none;
-    }
-
-    button:active {
-      transform: scale(0.98);
     }
 
     #yes {
@@ -69,18 +71,10 @@
       box-shadow: 0 8px 18px rgba(255, 77, 121, 0.35);
     }
 
-    #yes:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 24px rgba(255, 77, 121, 0.42);
-    }
-
+    /* IMPORTANT: No starts as "normal" next to Yes */
     #no {
       background-color: #999;
       color: white;
-      position: absolute;
-      left: 50%;
-      top: 58%;
-      transform: translate(-50%, -50%);
       box-shadow: 0 8px 18px rgba(0,0,0,0.14);
     }
 
@@ -88,6 +82,8 @@
       margin-top: 14px;
       font-size: 13px;
       color: rgba(0,0,0,0.6);
+      position: relative;
+      z-index: 2;
     }
 
     .badge {
@@ -102,6 +98,8 @@
     #gif {
       display: none;
       margin-top: 18px;
+      position: relative;
+      z-index: 2;
     }
 
     #gif h2 {
@@ -125,6 +123,7 @@
       animation: floatUp linear forwards;
       pointer-events: none;
       filter: drop-shadow(0 6px 10px rgba(0,0,0,0.1));
+      z-index: 1;
     }
 
     @keyframes floatUp {
@@ -132,12 +131,10 @@
       to   { transform: translateY(-110vh) translateX(var(--drift)) scale(var(--scale)); opacity: 0; }
     }
 
-    /* “Success” mode */
-    .successMode h1, .successMode p.sub, .successMode .stats, .successMode #no {
-      display: none;
-    }
-
-    .successMode .btnRow {
+    /* Success mode */
+    .successMode .btnRow,
+    .successMode .stats,
+    .successMode p.sub {
       display: none;
     }
   </style>
@@ -158,7 +155,7 @@
     </div>
 
     <div id="gif">
-      <h2>Correct answer. Approved. 💖</h2>
+      <h2>You had no choice 😂💖</h2>
       <img
         src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExaGdiaTRkZDZtZmxjN2dnaHFjamF3YmJjcWdkcWZ4bTVuNDl1eDM3diZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/SJjIAnXpogvHJJBpDB/giphy.gif"
         alt="Funny Gif">
@@ -171,19 +168,13 @@
     const gifDiv = document.getElementById("gif");
     const attemptsBadge = document.getElementById("attemptsBadge");
     const box = document.getElementById("box");
+    const btnRow = document.getElementById("btnRow");
 
     let attempts = 0;
     let yesScale = 1;
+    let dodging = false;
 
-    // Place "No" nicely when the page loads
-    const centerNo = () => {
-      noButton.style.left = "50%";
-      noButton.style.top = "58%";
-      noButton.style.transform = "translate(-50%, -50%)";
-    };
-    centerNo();
-
-    // Hearts generator
+    // Floating hearts
     function spawnHeart(burst = 1) {
       for (let i = 0; i < burst; i++) {
         const heart = document.createElement("div");
@@ -191,7 +182,7 @@
         heart.textContent = Math.random() > 0.5 ? "💖" : "❤️";
 
         const left = Math.random() * 100;
-        const duration = 3 + Math.random() * 3; // 3–6s
+        const duration = 3 + Math.random() * 3;
         const drift = (Math.random() * 120 - 60) + "px";
         const scale = (0.7 + Math.random() * 1.2).toFixed(2);
 
@@ -204,36 +195,60 @@
         setTimeout(() => heart.remove(), (duration * 1000) + 200);
       }
     }
-
-    // Light background hearts
     setInterval(() => spawnHeart(1), 700);
 
-    // Move "No" away + make "Yes" bigger each time
-    const dodge = () => {
+    // Turn No into an absolutely positioned button inside the card (only after first dodge)
+    function enableDodging() {
+      if (dodging) return;
+      dodging = true;
+
+      // Lock its current position relative to the card
+      const boxRect = box.getBoundingClientRect();
+      const noRect = noButton.getBoundingClientRect();
+
+      const left = noRect.left - boxRect.left;
+      const top  = noRect.top  - boxRect.top;
+
+      noButton.style.position = "absolute";
+      noButton.style.left = left + "px";
+      noButton.style.top = top + "px";
+
+      // Remove it from the flow so the row doesn't jump
+      noButton.style.margin = "0";
+    }
+
+    function dodge() {
+      enableDodging();
+
       attempts++;
       attemptsBadge.textContent = `No attempts: ${attempts}`;
 
-      // Make yes bigger (cap it so it doesn’t get ridiculous)
-      yesScale = Math.min(yesScale + 0.08, 1.8);
+      // Grow Yes slightly each time (cap it)
+      yesScale = Math.min(yesScale + 0.08, 1.7);
       yesButton.style.transform = `scale(${yesScale})`;
 
-      // Move No to a random position, but keep it on screen
-      const padding = 20;
+      // Constrain No within the card
+      const padding = 14;
+      const boxRect = box.getBoundingClientRect();
       const btnW = noButton.offsetWidth || 100;
       const btnH = noButton.offsetHeight || 50;
 
-      const x = Math.random() * (window.innerWidth - btnW - padding * 2) + padding;
-      const y = Math.random() * (window.innerHeight - btnH - padding * 2) + padding;
+      const maxX = boxRect.width - btnW - padding;
+      const maxY = boxRect.height - btnH - padding;
+
+      // Keep it away from the very top where the title is
+      const minX = padding;
+      const minY = 110; // below heading/subtitle
+
+      const x = Math.random() * (maxX - minX) + minX;
+      const y = Math.random() * (maxY - minY) + minY;
 
       noButton.style.left = x + "px";
       noButton.style.top = y + "px";
-      noButton.style.transform = "translate(0,0)";
 
-      // Small heart burst on each dodge
       spawnHeart(2);
-    };
+    }
 
-    // Works on desktop + mobile
     noButton.addEventListener("mouseover", dodge);
     noButton.addEventListener("touchstart", (e) => { e.preventDefault(); dodge(); }, { passive: false });
 
@@ -245,3 +260,4 @@
   </script>
 </body>
 </html>
+
