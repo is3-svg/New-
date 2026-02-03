@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valentine?</title>
+
+  <style>
+    body {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at top, #ffe6eb 0%, #ffd1dc 100%);
+      font-family: Arial, sans-serif;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    .box {
+      text-align: center;
+      padding: 28px 24px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.75);
+      box-shadow: 0 10px 30px rgba(230, 0, 92, 0.12);
+      backdrop-filter: blur(6px);
+      position: relative;
+      width: min(520px, 92vw);
+    }
+
+    h1 {
+      color: #e6005c;
+      margin: 0 0 6px;
+      font-size: 30px;
+      line-height: 1.2;
+    }
+
+    p.sub {
+      margin: 0 0 18px;
+      color: rgba(0,0,0,0.65);
+      font-size: 14px;
+    }
+
+    .btnRow {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 22px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+      user-select: none;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    #yes {
+      background-color: #ff4d79;
+      color: white;
+      box-shadow: 0 8px 18px rgba(255, 77, 121, 0.35);
+    }
+
+    #yes:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(255, 77, 121, 0.42);
+    }
+
+    #no {
+      background-color: #999;
+      color: white;
+      position: absolute;
+      left: 50%;
+      top: 58%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.14);
+    }
+
+    .stats {
+      margin-top: 14px;
+      font-size: 13px;
+      color: rgba(0,0,0,0.6);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(230, 0, 92, 0.08);
+      color: #b8004a;
+      font-weight: 600;
+    }
+
+    #gif {
+      display: none;
+      margin-top: 18px;
+    }
+
+    #gif h2 {
+      margin: 10px 0 12px;
+      color: #e6005c;
+      font-size: 22px;
+    }
+
+    img {
+      width: min(320px, 80vw);
+      border-radius: 14px;
+      box-shadow: 0 12px 26px rgba(0,0,0,0.12);
+    }
+
+    /* Floating hearts */
+    .heart {
+      position: absolute;
+      bottom: -20px;
+      font-size: 18px;
+      opacity: 0.75;
+      animation: floatUp linear forwards;
+      pointer-events: none;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.1));
+    }
+
+    @keyframes floatUp {
+      from { transform: translateY(0) translateX(0) scale(1); opacity: 0.75; }
+      to   { transform: translateY(-110vh) translateX(var(--drift)) scale(var(--scale)); opacity: 0; }
+    }
+
+    /* “Success” mode */
+    .successMode h1, .successMode p.sub, .successMode .stats, .successMode #no {
+      display: none;
+    }
+
+    .successMode .btnRow {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="box" id="box">
+    <h1>Zie Bie will you be my Valentine? ❤️</h1>
+    <p class="sub">Choose wisely. The universe is watching.</p>
+
+    <div class="btnRow" id="btnRow">
+      <button id="yes">Yes</button>
+      <button id="no">No</button>
+    </div>
+
+    <div class="stats">
+      <span class="badge" id="attemptsBadge">No attempts: 0</span>
+    </div>
+
+    <div id="gif">
+      <h2>Correct answer. Approved. 💖</h2>
+      <img
+        src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExaGdiaTRkZDZtZmxjN2dnaHFjamF3YmJjcWdkcWZ4bTVuNDl1eDM3diZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/SJjIAnXpogvHJJBpDB/giphy.gif"
+        alt="Funny Gif">
+    </div>
+  </div>
+
+  <script>
+    const noButton = document.getElementById("no");
+    const yesButton = document.getElementById("yes");
+    const gifDiv = document.getElementById("gif");
+    const attemptsBadge = document.getElementById("attemptsBadge");
+    const box = document.getElementById("box");
+
+    let attempts = 0;
+    let yesScale = 1;
+
+    // Place "No" nicely when the page loads
+    const centerNo = () => {
+      noButton.style.left = "50%";
+      noButton.style.top = "58%";
+      noButton.style.transform = "translate(-50%, -50%)";
+    };
+    centerNo();
+
+    // Hearts generator
+    function spawnHeart(burst = 1) {
+      for (let i = 0; i < burst; i++) {
+        const heart = document.createElement("div");
+        heart.className = "heart";
+        heart.textContent = Math.random() > 0.5 ? "💖" : "❤️";
+
+        const left = Math.random() * 100;
+        const duration = 3 + Math.random() * 3; // 3–6s
+        const drift = (Math.random() * 120 - 60) + "px";
+        const scale = (0.7 + Math.random() * 1.2).toFixed(2);
+
+        heart.style.left = left + "vw";
+        heart.style.animationDuration = duration + "s";
+        heart.style.setProperty("--drift", drift);
+        heart.style.setProperty("--scale", scale);
+
+        document.body.appendChild(heart);
+        setTimeout(() => heart.remove(), (duration * 1000) + 200);
+      }
+    }
+
+    // Light background hearts
+    setInterval(() => spawnHeart(1), 700);
+
+    // Move "No" away + make "Yes" bigger each time
+    const dodge = () => {
+      attempts++;
+      attemptsBadge.textContent = `No attempts: ${attempts}`;
+
+      // Make yes bigger (cap it so it doesn’t get ridiculous)
+      yesScale = Math.min(yesScale + 0.08, 1.8);
+      yesButton.style.transform = `scale(${yesScale})`;
+
+      // Move No to a random position, but keep it on screen
+      const padding = 20;
+      const btnW = noButton.offsetWidth || 100;
+      const btnH = noButton.offsetHeight || 50;
+
+      const x = Math.random() * (window.innerWidth - btnW - padding * 2) + padding;
+      const y = Math.random() * (window.innerHeight - btnH - padding * 2) + padding;
+
+      noButton.style.left = x + "px";
+      noButton.style.top = y + "px";
+      noButton.style.transform = "translate(0,0)";
+
+      // Small heart burst on each dodge
+      spawnHeart(2);
+    };
+
+    // Works on desktop + mobile
+    noButton.addEventListener("mouseover", dodge);
+    noButton.addEventListener("touchstart", (e) => { e.preventDefault(); dodge(); }, { passive: false });
+
+    yesButton.addEventListener("click", () => {
+      gifDiv.style.display = "block";
+      box.classList.add("successMode");
+      spawnHeart(12);
+    });
+  </script>
+</body>
+</html>
